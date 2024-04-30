@@ -19,7 +19,9 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Utilities"
 ]
-dependencies = []
+dependencies = [
+    "attrs>=23.2.0",
+]
 
 [project.urls]
 "Homepage" = "https://github.com/GibranDar/gd-sqlite3"
