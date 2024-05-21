@@ -50,10 +50,10 @@ class SQLite3Database:
         stmt = f"""
             CREATE TABLE IF NOT EXISTS {table} (
                 id INTEGER PRIMARY KEY,
-                {", ".join(" ".join([field[0], field[1].upper()]) for field in fields.items())}
-            )
+                {", ".join(" ".join([field[0], field[1].upper()]) for field in fields.items())}{"," if sql else ""}
+                {sql}
+            );
         """
-        stmt += sql
         self.cursor.execute(stmt)
         self.conn.commit()
         return self.get_table_info(table)
