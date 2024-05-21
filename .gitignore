@@ -7,3 +7,5 @@ keys/
 *.db
 *.sqlite3
 *.log
+*.data.csv
+schema.py
