@@ -43,17 +43,18 @@ class SQLite3Database:
         return [col[1] for col in columns]
 
     def create_table(
-        self, table: str, fields: dict[str, str]
+        self, table: str, fields: dict[str, str], sql: str = ""
     ) -> list[tuple[int, str, str, int, Optional[str], int]]:
         """Create a table in the database."""
 
-        self.cursor.execute(
-            f"""
+        stmt = f"""
             CREATE TABLE IF NOT EXISTS {table} (
                 id INTEGER PRIMARY KEY,
                 {", ".join(" ".join([field[0], field[1].upper()]) for field in fields.items())}
-            )"""
-        )
+            )
+        """
+        stmt += sql
+        self.cursor.execute(stmt)
         self.conn.commit()
         return self.get_table_info(table)
 
