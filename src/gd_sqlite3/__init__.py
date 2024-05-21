@@ -74,6 +74,16 @@ class SQLite3Database:
             csv_writer.writerows(data)
         return
 
+    def create_trigger(self, trigger_name: str, trigger_stmt: str) -> None:
+        self.cursor.execute(
+            f"""
+            CREATE TRIGGER {trigger_name}
+            {trigger_stmt};
+        """
+        )
+        self.conn.commit()
+        return
+
     def insert_one(self, table: str, obj: T) -> None:
         """Insert (or replace) an object into the given table"""
 
@@ -82,10 +92,44 @@ class SQLite3Database:
             INSERT OR REPLACE INTO {table} ({', '.join(col_names[1:])})
             VALUES ({', '.join(['?'] * len(col_names[1:]))});
         """
+        print(stmt)
         self.cursor.execute(
             stmt, tuple([getattr(obj, name) for name in col_names[1:]])
         )
         self.conn.commit()
+        return
+
+    def insert_many(self, table: str, objs: list[T]) -> None:
+        """Insert many objects into a given table"""
+
+        col_names = self.table_columns(table)
+        placeholders = ", ".join(["?"] * len(col_names[1:]))
+        stmt = f"""
+            INSERT INTO {table} ({', '.join(col_names[1:])})
+            VALUES ({placeholders});
+        """
+        values = [
+            tuple(getattr(obj, name) for name in col_names[1:]) for obj in objs
+        ]
+        self.cursor.executemany(stmt, values)
+        self.conn.commit()
+        return
+
+    def insert_from_csv(
+        self, file: str, table: str, c: type[T], include_id=False
+    ) -> None:
+        with open(file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            data: list[T] = []
+            for row in reader:
+                row_clean = {}
+                for k, v in row.items():
+                    if k == "id" and not include_id:
+                        continue
+                    if k in c.__annotations__:
+                        row_clean[k] = v
+                data.append(c(**row_clean))
+        self.insert_many(table, data)
         return
 
     def select(
@@ -111,7 +155,7 @@ class SQLite3Database:
         """Select all rows from the given table."""
 
         col_names = self.table_columns(table)
-        res = self.cursor.execute(f"SELECT * FROM locations").fetchall()
+        res = self.cursor.execute(f"SELECT * FROM {table}").fetchall()
         items: list[T] = [c(**dict(zip(col_names, row))) for row in res]
         return items
 
@@ -123,9 +167,7 @@ class SQLite3Database:
     ) -> None:
         """Update rows meeting query criteria"""
 
-        columns = self.get_table_info(table)
-        col_names = [col[1] for col in columns[1:]]
-
+        col_names = self.table_columns(table)
         stmt = f"""
             UPDATE {table}
             SET {', '.join(f"{col}=?" for col in col_names)}
